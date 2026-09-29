@@ -6,7 +6,6 @@ import {
   Trash2,
   User,
   CreditCard,
-  Printer,
   ShoppingCart,
   ChevronDown,
   Minus,
@@ -15,10 +14,8 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import {
-  DEFAULT_THERMAL_PAPER_SIZE,
-  ThermalPaperSize,
-  ThermalPaperSizeSelect,
-  thermalPaperClass,
+  InvoicePrintFooter,
+  InvoicePrintHeader,
 } from '../lib/thermal-print';
 
 export const POSView: React.FC = () => {
@@ -45,7 +42,6 @@ export const POSView: React.FC = () => {
   const [activeReceipt, setActiveReceipt] = useState<SaleInvoice | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
   const [printFormat, setPrintFormat] = useState<'A4' | 'Thermal'>('Thermal');
-  const [thermalPaperSize, setThermalPaperSize] = useState<ThermalPaperSize>(DEFAULT_THERMAL_PAPER_SIZE);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const customerSearchRef = useRef<HTMLInputElement>(null);
@@ -585,29 +581,16 @@ export const POSView: React.FC = () => {
           <div className={`bg-white rounded-2xl shadow-2xl w-full ${printFormat === 'A4' ? 'max-w-4xl' : 'max-w-lg'} border border-neutral-100 flex flex-col`}
             style={{ maxHeight: 'calc(100vh - 2rem)' }}>
 
-            {/* TOP BAR */}
-            <div className="px-5 py-3 border-b border-neutral-100 bg-neutral-50 rounded-t-2xl flex items-center gap-2 shrink-0 no-print">
-              <span className="text-xs font-semibold text-neutral-400 mr-1">Format:</span>
-              {(['Thermal', 'A4'] as const).map(fmt => (
-                <button key={fmt}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer transition-all ${printFormat === fmt ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'}`}
-                  onClick={() => setPrintFormat(fmt)}>
-                  {fmt === 'Thermal' ? '🧾 Thermal (80 mm)' : '📄 A4 Invoice'}
-                </button>
-              ))}
-              {printFormat === 'Thermal' && (
-                <ThermalPaperSizeSelect value={thermalPaperSize} onChange={setThermalPaperSize} />
-              )}
-              <div className="ml-auto text-xs text-neutral-400 font-mono font-semibold">
-                #{activeReceipt.invoiceNumber}
-              </div>
-              {(activeReceipt.paymentStatus === 'Partial' || (activeReceipt as any).amountDue > 0) && (
-                <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-[10px] font-bold rounded-full uppercase">Credit</span>
-              )}
-            </div>
+             <InvoicePrintHeader
+               format={printFormat}
+               onFormatChange={setPrintFormat}
+               invoiceNumber={activeReceipt.invoiceNumber}
+               credit={activeReceipt.paymentStatus === 'Partial' || (activeReceipt as any).amountDue > 0}
+               onClose={() => { setIsReceiptModalOpen(false); setActiveReceipt(null); }}
+             />
 
             {/* SCROLLABLE RECEIPT */}
-            <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? `thermal-print-container ${thermalPaperClass(thermalPaperSize)}` : ''}`}>
+             <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? 'thermal-print-container thermal-paper-80x210' : ''}`}>
               {printFormat === 'Thermal' ? (
                 <div className="thermal-paper mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
                   <div className="text-center font-bold">
@@ -752,23 +735,11 @@ export const POSView: React.FC = () => {
               )}
             </div>
 
-            {/* STICKY BOTTOM */}
-            <div className="shrink-0 border-t border-neutral-200 bg-white rounded-b-2xl px-5 py-4 flex items-center gap-3 no-print">
-              <button
-                className="flex-1 py-3 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white rounded-xl text-sm font-bold shadow-md shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
-                onClick={() => window.print()}
-              >
-                <Printer className="w-4 h-4" />
-                Print Receipt
-              </button>
-              <button
-                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
-                onClick={() => { setIsReceiptModalOpen(false); setActiveReceipt(null); }}
-              >
-                <X className="w-4 h-4" />
-                Close & New Sale
-              </button>
-            </div>
+             <InvoicePrintFooter
+               onPrint={() => window.print()}
+               onClose={() => { setIsReceiptModalOpen(false); setActiveReceipt(null); }}
+               closeLabel="Close & New Sale"
+             />
 
           </div>
         </div>

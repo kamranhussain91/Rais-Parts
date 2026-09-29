@@ -6,10 +6,8 @@ import {
   AlertCircle, DollarSign, Bike, Pencil, Trash2
 } from 'lucide-react';
 import {
-  DEFAULT_THERMAL_PAPER_SIZE,
-  ThermalPaperSize,
-  ThermalPaperSizeSelect,
-  thermalPaperClass,
+  InvoicePrintFooter,
+  InvoicePrintHeader,
 } from '../lib/thermal-print';
 
 const SERVICE_PRICES: Record<ServiceType, number> = {
@@ -274,7 +272,6 @@ export const ReceiptModal: React.FC<{
   accounts?: { id: string; bankName: string }[];
   onClose: () => void;
 }> = ({ record, accounts = [], onClose }) => {
-  const [thermalPaperSize, setThermalPaperSize] = useState<ThermalPaperSize>(DEFAULT_THERMAL_PAPER_SIZE);
   const lines: ServiceLine[] = record.serviceLines ?? [{ serviceType: record.serviceType, price: record.price }];
   const hasOilChange = lines.some(l => l.serviceType === 'Oil Change');
   const paymentAccount = accounts.find(account => account.id === record.bankAccountId);
@@ -284,23 +281,19 @@ export const ReceiptModal: React.FC<{
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm border border-slate-100 overflow-hidden">
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 bg-slate-50 no-print">
-          <span className="text-sm font-bold text-slate-700 flex items-center gap-2">
-            <Printer className="w-4 h-4 text-slate-500" /> Workshop Job Receipt
-          </span>
-          <div className="flex gap-2">
-            <ThermalPaperSizeSelect value={thermalPaperSize} onChange={setThermalPaperSize} />
-            <button onClick={() => window.print()} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1">
-              <Printer className="w-3 h-3" /> Print
-            </button>
-            <button onClick={onClose} className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold cursor-pointer">
-              Close
-            </button>
-          </div>
-        </div>
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-neutral-100 flex flex-col overflow-hidden"
+        style={{ maxHeight: 'calc(100vh - 2rem)' }}
+      >
+        <InvoicePrintHeader
+          format="Thermal"
+          onFormatChange={() => undefined}
+          invoiceNumber={record.invoiceNumber}
+          showFormatToggle={false}
+          onClose={onClose}
+        />
 
-        <div className={`print-area thermal-print-container ${thermalPaperClass(thermalPaperSize)}`}>
+        <div className="overflow-y-auto flex-1 print-area bg-white thermal-print-container thermal-paper-80x210">
           <div className="thermal-paper p-6 font-mono text-[11px] leading-relaxed text-neutral-800">
           <div className="text-center">
             <p className="text-sm font-bold uppercase tracking-wider">RAIS MOTOR WORKSHOP</p>
@@ -370,6 +363,7 @@ export const ReceiptModal: React.FC<{
           <p className="text-center text-[10px] text-neutral-400 font-sans mt-0.5">Check engine oil every 1000 km. Drive safely.</p>
           </div>
         </div>
+        <InvoicePrintFooter onPrint={() => window.print()} onClose={onClose} />
       </div>
     </div>
   );
