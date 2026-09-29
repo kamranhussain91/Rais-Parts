@@ -54,6 +54,9 @@
     width: 100%;
     page: a4-invoice;
   }
+  .thermal-print-container {
+    padding: 0 !important;
+  }
   .thermal-paper-80x210 {
     page: thermal-80x210;
   }
@@ -72,9 +75,24 @@
     box-sizing: border-box;
     overflow: visible !important;
   }
-  .thermal-paper-content {
-    width: 100% !important;
-    max-width: none !important;
+  .thermal-paper h1,
+  .thermal-paper h2,
+  .thermal-paper h3,
+  .thermal-paper p,
+  .thermal-paper span {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+  .thermal-paper .flex > *,
+  .thermal-paper .grid > * {
+    min-width: 0;
+  }
+  .thermal-paper .flex.justify-between > :last-child {
+    min-width: 0;
+    text-align: right;
+    overflow-wrap: anywhere;
   }
   .report-print-area {
     padding: 0 12mm;

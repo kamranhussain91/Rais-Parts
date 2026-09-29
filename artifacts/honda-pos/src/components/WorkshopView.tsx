@@ -300,7 +300,8 @@ export const ReceiptModal: React.FC<{
           </div>
         </div>
 
-        <div className={`p-6 font-mono text-[11px] leading-relaxed text-neutral-800 print-area thermal-paper ${thermalPaperClass(thermalPaperSize)}`}>
+        <div className={`print-area thermal-print-container ${thermalPaperClass(thermalPaperSize)}`}>
+          <div className="thermal-paper p-6 font-mono text-[11px] leading-relaxed text-neutral-800">
           <div className="text-center">
             <p className="text-sm font-bold uppercase tracking-wider">RAIS MOTOR WORKSHOP</p>
             <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>
@@ -367,6 +368,7 @@ export const ReceiptModal: React.FC<{
           <div className="border-b border-dashed border-neutral-300 my-3" />
           <p className="text-center text-[10px] font-bold uppercase text-neutral-700">Thank you for choosing Rais Honda!</p>
           <p className="text-center text-[10px] text-neutral-400 font-sans mt-0.5">Check engine oil every 1000 km. Drive safely.</p>
+          </div>
         </div>
       </div>
     </div>

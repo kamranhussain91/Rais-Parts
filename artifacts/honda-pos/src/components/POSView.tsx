@@ -607,9 +607,9 @@ export const POSView: React.FC = () => {
             </div>
 
             {/* SCROLLABLE RECEIPT */}
-            <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? `thermal-paper ${thermalPaperClass(thermalPaperSize)}` : ''}`}>
+            <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? `thermal-print-container ${thermalPaperClass(thermalPaperSize)}` : ''}`}>
               {printFormat === 'Thermal' ? (
-                <div className="thermal-paper-content mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
+                <div className="thermal-paper mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
                   <div className="text-center font-bold">
                     <h2 className="text-sm uppercase tracking-wide">RAIS HONDA PARTS</h2>
                     <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>
