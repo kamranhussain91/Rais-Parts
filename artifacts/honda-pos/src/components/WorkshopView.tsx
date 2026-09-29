@@ -5,6 +5,12 @@ import {
   Wrench, Plus, X, Printer, Search, CheckCircle,
   AlertCircle, DollarSign, Bike, Pencil, Trash2
 } from 'lucide-react';
+import {
+  DEFAULT_THERMAL_PAPER_SIZE,
+  ThermalPaperSize,
+  ThermalPaperSizeSelect,
+  thermalPaperClass,
+} from '../lib/thermal-print';
 
 const SERVICE_PRICES: Record<ServiceType, number> = {
   'Oil Change':     150,
@@ -268,6 +274,7 @@ export const ReceiptModal: React.FC<{
   accounts?: { id: string; bankName: string }[];
   onClose: () => void;
 }> = ({ record, accounts = [], onClose }) => {
+  const [thermalPaperSize, setThermalPaperSize] = useState<ThermalPaperSize>(DEFAULT_THERMAL_PAPER_SIZE);
   const lines: ServiceLine[] = record.serviceLines ?? [{ serviceType: record.serviceType, price: record.price }];
   const hasOilChange = lines.some(l => l.serviceType === 'Oil Change');
   const paymentAccount = accounts.find(account => account.id === record.bankAccountId);
@@ -283,6 +290,7 @@ export const ReceiptModal: React.FC<{
             <Printer className="w-4 h-4 text-slate-500" /> Workshop Job Receipt
           </span>
           <div className="flex gap-2">
+            <ThermalPaperSizeSelect value={thermalPaperSize} onChange={setThermalPaperSize} />
             <button onClick={() => window.print()} className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold cursor-pointer flex items-center gap-1">
               <Printer className="w-3 h-3" /> Print
             </button>
@@ -292,7 +300,7 @@ export const ReceiptModal: React.FC<{
           </div>
         </div>
 
-        <div className="p-6 font-mono text-[11px] leading-relaxed text-neutral-800 print-area">
+        <div className={`p-6 font-mono text-[11px] leading-relaxed text-neutral-800 print-area thermal-paper ${thermalPaperClass(thermalPaperSize)}`}>
           <div className="text-center">
             <p className="text-sm font-bold uppercase tracking-wider">RAIS MOTOR WORKSHOP</p>
             <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>

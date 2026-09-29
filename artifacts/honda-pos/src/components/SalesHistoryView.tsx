@@ -15,6 +15,12 @@ import {
   Trash2,
   Package,
 } from 'lucide-react';
+import {
+  DEFAULT_THERMAL_PAPER_SIZE,
+  ThermalPaperSize,
+  ThermalPaperSizeSelect,
+  thermalPaperClass,
+} from '../lib/thermal-print';
 
 const formatDate = (iso: string) => {
   const d = new Date(iso);
@@ -52,6 +58,7 @@ const ReceiptModal: React.FC<{
   onClose: () => void;
 }> = ({ invoice, accounts = [], onClose }) => {
   const [printFormat, setPrintFormat] = useState<'A4' | 'Thermal'>('Thermal');
+  const [thermalPaperSize, setThermalPaperSize] = useState<ThermalPaperSize>(DEFAULT_THERMAL_PAPER_SIZE);
   const paymentLabel = getInvoicePaymentAccountLabel(invoice, accounts);
 
   const handlePrint = () => window.print();
@@ -68,9 +75,12 @@ const ReceiptModal: React.FC<{
             <button key={fmt}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer transition-all ${printFormat === fmt ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'}`}
               onClick={() => setPrintFormat(fmt)}>
-              {fmt === 'Thermal' ? '🧾 Thermal (3″)' : '📄 A4 Invoice'}
+              {fmt === 'Thermal' ? '🧾 Thermal (80 mm)' : '📄 A4 Invoice'}
             </button>
           ))}
+          {printFormat === 'Thermal' && (
+            <ThermalPaperSizeSelect value={thermalPaperSize} onChange={setThermalPaperSize} />
+          )}
           <div className="ml-auto flex items-center gap-2">
             <span className="text-xs text-neutral-400 font-mono font-semibold">#{invoice.invoiceNumber}</span>
             <button onClick={handlePrint} className="flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-bold transition-all cursor-pointer">
@@ -82,9 +92,9 @@ const ReceiptModal: React.FC<{
           </div>
         </div>
 
-        <div className="overflow-y-auto flex-1 print-area bg-white p-4">
+        <div className={`overflow-y-auto flex-1 print-area bg-white p-4 ${printFormat === 'Thermal' ? `thermal-paper ${thermalPaperClass(thermalPaperSize)}` : ''}`}>
           {printFormat === 'Thermal' ? (
-            <div className="mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
+            <div className="thermal-paper-content mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
               <div className="text-center font-bold">
                 <h2 className="text-sm uppercase tracking-wide">RAIS HONDA PARTS</h2>
                 <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>

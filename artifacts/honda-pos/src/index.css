@@ -25,9 +25,21 @@
 
 /* Print styles */
 @media print {
-  @page {
+  @page a4-invoice {
     size: A4 landscape;
     margin: 10mm;
+  }
+  @page thermal-80x210 {
+    size: 80mm 210mm;
+    margin: 0;
+  }
+  @page thermal-80x297 {
+    size: 80mm 297mm;
+    margin: 0;
+  }
+  @page thermal-80x3276 {
+    size: 80mm 3276mm;
+    margin: 0;
   }
   body * {
     visibility: hidden;
@@ -40,6 +52,29 @@
     left: 0;
     top: 0;
     width: 100%;
+    page: a4-invoice;
+  }
+  .thermal-paper-80x210 {
+    page: thermal-80x210;
+  }
+  .thermal-paper-80x297 {
+    page: thermal-80x297;
+  }
+  .thermal-paper-80x3276 {
+    page: thermal-80x3276;
+  }
+  .thermal-paper {
+    width: 80mm !important;
+    max-width: 80mm !important;
+    min-height: 210mm;
+    margin: 0 !important;
+    padding: 4mm !important;
+    box-sizing: border-box;
+    overflow: visible !important;
+  }
+  .thermal-paper-content {
+    width: 100% !important;
+    max-width: none !important;
   }
   .report-print-area {
     padding: 0 12mm;

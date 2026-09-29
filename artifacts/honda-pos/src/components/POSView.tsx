@@ -14,6 +14,12 @@ import {
   X,
   AlertCircle,
 } from 'lucide-react';
+import {
+  DEFAULT_THERMAL_PAPER_SIZE,
+  ThermalPaperSize,
+  ThermalPaperSizeSelect,
+  thermalPaperClass,
+} from '../lib/thermal-print';
 
 export const POSView: React.FC = () => {
   const { db, saveSaleInvoice, terminalId, setTerminalId } = useApp();
@@ -39,6 +45,7 @@ export const POSView: React.FC = () => {
   const [activeReceipt, setActiveReceipt] = useState<SaleInvoice | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
   const [printFormat, setPrintFormat] = useState<'A4' | 'Thermal'>('Thermal');
+  const [thermalPaperSize, setThermalPaperSize] = useState<ThermalPaperSize>(DEFAULT_THERMAL_PAPER_SIZE);
 
   const searchRef = useRef<HTMLInputElement>(null);
   const customerSearchRef = useRef<HTMLInputElement>(null);
@@ -585,9 +592,12 @@ export const POSView: React.FC = () => {
                 <button key={fmt}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold border cursor-pointer transition-all ${printFormat === fmt ? 'bg-red-600 text-white border-red-600 shadow-sm' : 'bg-white border-neutral-200 text-neutral-500 hover:border-neutral-300'}`}
                   onClick={() => setPrintFormat(fmt)}>
-                  {fmt === 'Thermal' ? '🧾 Thermal (3″)' : '📄 A4 Invoice'}
+                  {fmt === 'Thermal' ? '🧾 Thermal (80 mm)' : '📄 A4 Invoice'}
                 </button>
               ))}
+              {printFormat === 'Thermal' && (
+                <ThermalPaperSizeSelect value={thermalPaperSize} onChange={setThermalPaperSize} />
+              )}
               <div className="ml-auto text-xs text-neutral-400 font-mono font-semibold">
                 #{activeReceipt.invoiceNumber}
               </div>
@@ -597,9 +607,9 @@ export const POSView: React.FC = () => {
             </div>
 
             {/* SCROLLABLE RECEIPT */}
-            <div className="overflow-y-auto flex-1 print-area bg-white">
+            <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? `thermal-paper ${thermalPaperClass(thermalPaperSize)}` : ''}`}>
               {printFormat === 'Thermal' ? (
-                <div className="mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
+                <div className="thermal-paper-content mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
                   <div className="text-center font-bold">
                     <h2 className="text-sm uppercase tracking-wide">RAIS HONDA PARTS</h2>
                     <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>
