@@ -1,0 +1,161 @@
+Update and harden my existing application **without removing, disabling, hiding, or simplifying ANY existing feature**. Keep the complete current UI, modules, workflows, reports, permissions, POS, inventory, purchasing, workshop, customers, banking, expenses, backup/restore, and multi-terminal functionality.
+
+**Important:** FBR integration, FBR features, QR codes, invoice QR verification, and any FBR-related functionality have already been removed from my application and are **NOT USED**. Do **not** add, restore, recreate, or depend on any FBR or QR-code functionality.
+
+### Goal
+Make the entire application a fully connected, production-ready business, inventory, workshop, customer, banking, and financial management system where changes automatically flow through all related modules.
+
+### Requirements
+
+1. **Audit the entire existing project first** and understand the current architecture and all existing features before changing anything.
+
+2. **Database**
+   - Move the production source of truth from JSON to **PostgreSQL + Drizzle**.
+   - Safely migrate and preserve all existing data.
+   - Do not lose historical records.
+
+3. **Authentication & Permissions**
+   - Implement proper server-side authentication.
+   - Secure password hashing.
+   - Secure sessions/tokens.
+   - Never trust user/role information sent from the frontend.
+   - Enforce permissions on the backend.
+
+4. **Central Business Logic**
+   Create a shared transaction/service layer connecting:
+   - Sales/POS
+   - Inventory
+   - Purchasing
+   - Workshop
+   - Customers
+   - Suppliers
+   - Banking
+   - Expenses
+   - Payments
+   - Reports
+
+5. **Database Transactions**
+   - Financial and inventory operations must be atomic.
+   - If one part of a transaction fails, the entire transaction must roll back.
+
+6. **Inventory**
+   - Create an authoritative inventory movement ledger.
+   - Every sale, purchase, workshop part usage, return, damage, and stock adjustment must update inventory correctly.
+   - Prevent negative stock unless explicitly supported by an existing workflow.
+   - Maintain full inventory history.
+
+7. **Accounting & Finance**
+   Implement proper **double-entry accounting** with:
+   - Chart of accounts
+   - Journal entries and journal lines
+   - Cash accounts
+   - Bank accounts
+   - Revenue
+   - COGS
+   - Expenses
+   - Taxes where already applicable
+   - Customer Accounts Receivable
+   - Supplier Accounts Payable
+   - Transfers between accounts
+
+8. **Automatic Module Synchronization**
+   Every important action must automatically update all related modules.
+
+   Example:
+   **Sale → Invoice → Inventory decrease → COGS → Revenue → Cash/Bank or Customer Receivable → Customer history → Reports/Dashboard → Audit log**
+
+   **Purchase → Inventory increase → Supplier payable → Cash/Bank payment → Reports/Dashboard → Audit log**
+
+   **Workshop job → Parts/labour → Inventory movement → Revenue/COGS → Cash/Bank or Customer receivable → Customer/Vehicle history → Service reminder → Reports**
+
+   **Expense → Expense account → Cash/Bank decrease → Profit calculation → Reports → Audit log**
+
+   **Customer payment → Cash/Bank increase → Customer receivable decrease → Invoice allocation → Customer balance/history → Reports**
+
+9. **Invoices, Returns & Refunds**
+   - Fix invoice editing so financial and inventory effects remain correct.
+   - Implement proper sale returns, refunds, cancellations, and void/reversal handling.
+   - Never simply overwrite historical financial records.
+   - All corrections must create proper reversals/adjustments where required.
+
+10. **Customer & Supplier Accounts**
+   - Customer payments must be properly allocated to invoices/receivables.
+   - Maintain accurate customer outstanding balances and statements.
+   - Supplier purchases and payments must correctly update Accounts Payable.
+   - Maintain supplier statements and balances.
+
+11. **Idempotency**
+   - Prevent duplicate sales, payments, purchases, transfers, and other financial transactions when requests are retried.
+
+12. **Invoice Numbers & IDs**
+   - Use safe unique invoice numbering.
+   - Prevent collisions across multiple terminals/users.
+
+13. **Real-Time Multi-Terminal Sync**
+   - Use WebSockets, SSE, or another reliable event-based system.
+   - Changes made on one terminal should automatically appear on other active terminals.
+   - Sync inventory, sales, payments, customers, purchases, workshop jobs, banking, and relevant dashboard data.
+
+14. **Dashboard & Reports**
+   - All reports, dashboards, profits, margins, cash, bank balances, inventory values, receivables, payables, and analytics must come from the same authoritative database/accounting data.
+   - Eliminate conflicting calculations between modules.
+
+15. **Audit Logging**
+   - Maintain structured audit logs for important actions.
+   - Record user, terminal, action, entity, timestamp, transaction/reference ID, and relevant before/after changes.
+   - Audit records must not be accidentally overwritten.
+
+16. **Backup & Restore**
+   - Preserve the existing backup/restore feature.
+   - Add validation, schema/version checking, integrity checks, and automatic emergency backup before restore.
+   - Verify restored data after recovery.
+
+17. **System Reconciliation**
+   Add an admin reconciliation system that can detect:
+   - Inventory mismatches
+   - Customer balance mismatches
+   - Supplier balance mismatches
+   - Cash/bank mismatches
+   - Accounting debit/credit mismatches
+   - Duplicate invoices/transactions
+   - Orphaned records
+   - Other cross-module inconsistencies
+
+18. **Validation & Data Integrity**
+   - Add strong runtime validation using Zod or an equivalent validation system.
+   - Never rely only on TypeScript type casting for request validation.
+   - Handle money using safe decimal/minor-unit calculations with deterministic rounding.
+
+19. **Testing**
+   Add automated tests for:
+   - Authentication/authorization
+   - Sales
+   - Purchases
+   - Inventory
+   - Workshop
+   - Customer payments
+   - Supplier payments
+   - Expenses
+   - Bank transfers
+   - Returns/refunds
+   - Concurrency
+   - Idempotency
+   - Backup/restore
+   - Cross-module synchronization
+
+20. **Code Structure**
+   - Refactor oversized files into logical services, controllers, repositories, and modules.
+   - Keep the existing frontend UI and workflows intact.
+   - Improve maintainability without changing the user experience unnecessarily.
+
+### Critical Rules
+
+**DO NOT remove any existing feature.**  
+**DO NOT disable any existing feature.**  
+**DO NOT hide any existing feature.**  
+**DO NOT simplify away existing workflows.**  
+**DO NOT redesign the application unnecessarily.**  
+**DO NOT delete or overwrite historical business data.**  
+**DO NOT add back FBR, QR codes, QR invoice verification, or any FBR-related functionality.**
+
+Work in safe phases, preserve existing functionality, run tests/builds after major changes, and verify that every existing module continues to work after the upgrade.

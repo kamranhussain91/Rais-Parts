@@ -1,0 +1,5 @@
+- [Honda POS Architecture](honda-pos-arch.md) — file-based JSON DB, Express routes in honda-pos.ts, React frontend with AppContext for all API calls, FBR tax integration simulated.
+- [Damage & Returns Feature](damage-returns.md) — StockAdjustmentRecord type, 4 API routes, AppContext methods, InventoryView tabs.
+- [Workshop Parts Billing](workshop-parts-billing.md) — workshop bills embed labor and inventory parts; posting must update stock, account ledger, customers, dashboards, reports, and sales history together.
+- [Bank account defaults](bank-account-defaults.md) — transaction defaults come from persisted flags with legacy JSON normalization, never legacy account IDs.
+- [Project import handoff](project-import-handoff.md) — restored source files may need registering after a conversation-to-project move.
