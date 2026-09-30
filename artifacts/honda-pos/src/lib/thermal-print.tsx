@@ -6,7 +6,6 @@ export type InvoicePrintFormat = 'A4' | 'Thermal';
 export interface ThermalInvoiceItem {
   id: string;
   name: string;
-  partNumber: string;
   qty: number;
   amount: number;
 }
@@ -78,7 +77,6 @@ export const ThermalInvoice: React.FC<{
           <div key={item.id} className="grid grid-cols-12 gap-1">
             <div className="col-span-6">
               <span className="font-bold block leading-tight">{item.name}</span>
-              <span className="text-[9px] text-neutral-400">P/N: {item.partNumber}</span>
             </div>
             <span className="col-span-2 text-center font-mono">{item.qty}</span>
             <span className="col-span-4 text-right font-mono">Rs.{item.amount}</span>

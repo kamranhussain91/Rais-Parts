@@ -283,14 +283,12 @@ export const ReceiptModal: React.FC<{
     ...lines.map((line, index) => ({
       id: `service-${index}`,
       name: SERVICE_LABELS[line.serviceType as ServiceType] ?? line.serviceType,
-      partNumber: 'SERVICE',
       qty: 1,
       amount: Number(line.price),
     })),
     ...(record.parts || []).map(part => ({
       id: `part-${part.productId}`,
       name: part.name,
-      partNumber: part.partNumber,
       qty: part.qty,
       amount: part.qty * part.sellingPrice,
     })),

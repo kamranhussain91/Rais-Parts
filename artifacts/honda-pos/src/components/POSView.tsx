@@ -602,7 +602,6 @@ export const POSView: React.FC = () => {
                    items={activeReceipt.items.map(item => ({
                      id: item.productId,
                      name: item.name,
-                     partNumber: item.partNumber,
                      qty: item.qty,
                      amount: item.sellingPrice * item.qty,
                    }))}
@@ -652,7 +651,7 @@ export const POSView: React.FC = () => {
                     <table className="w-full text-left text-[11px]">
                       <thead>
                         <tr className="bg-neutral-50 border-b border-neutral-100 font-bold uppercase text-neutral-500 text-xs">
-                          <th className="py-2.5 px-3">Part #</th><th className="py-2.5 px-3">Description</th>
+                          <th className="py-2.5 px-3">Description</th>
                           <th className="py-2.5 px-3 text-center">Price</th><th className="py-2.5 px-3 text-center">Qty</th>
                           <th className="py-2.5 px-3 text-right">Total</th>
                         </tr>
@@ -660,7 +659,6 @@ export const POSView: React.FC = () => {
                       <tbody className="divide-y divide-neutral-100">
                         {activeReceipt.items.map(item => (
                           <tr key={item.productId} className="hover:bg-neutral-50/50">
-                            <td className="py-2.5 px-3 font-mono">{item.partNumber}</td>
                             <td className="py-2.5 px-3 font-bold">{item.name}</td>
                             <td className="py-2.5 px-3 text-center font-mono">Rs.{item.sellingPrice}</td>
                             <td className="py-2.5 px-3 text-center font-mono font-bold">{item.qty}</td>

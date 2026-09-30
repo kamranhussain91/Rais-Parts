@@ -86,7 +86,6 @@ const ReceiptModal: React.FC<{
               items={invoice.items.map((item: SaleItem) => ({
                 id: item.productId,
                 name: item.name,
-                partNumber: item.partNumber,
                 qty: item.qty,
                 amount: item.sellingPrice * item.qty,
               }))}
@@ -134,7 +133,6 @@ const ReceiptModal: React.FC<{
                 <thead>
                   <tr className="bg-neutral-800 text-white">
                     <th className="text-left p-2 rounded-tl font-semibold">Item</th>
-                    <th className="text-left p-2 font-semibold">Part #</th>
                     <th className="text-center p-2 font-semibold">Qty</th>
                     <th className="text-right p-2 font-semibold">Unit Price</th>
                     <th className="text-right p-2 rounded-tr font-semibold">Amount</th>
@@ -144,7 +142,6 @@ const ReceiptModal: React.FC<{
                   {invoice.items.map((item: SaleItem, i: number) => (
                     <tr key={item.productId} className={i % 2 === 0 ? 'bg-white' : 'bg-neutral-50'}>
                       <td className="p-2 font-medium">{item.name}</td>
-                      <td className="p-2 font-mono text-neutral-500">{item.partNumber}</td>
                       <td className="p-2 text-center">{item.qty}</td>
                       <td className="p-2 text-right font-mono">Rs. {item.sellingPrice.toLocaleString()}</td>
                       <td className="p-2 text-right font-mono font-semibold">Rs. {(item.sellingPrice * item.qty).toLocaleString()}</td>
