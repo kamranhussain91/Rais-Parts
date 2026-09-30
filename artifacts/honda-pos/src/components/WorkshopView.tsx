@@ -8,6 +8,7 @@ import {
 import {
   InvoicePrintFooter,
   InvoicePrintHeader,
+  ThermalInvoice,
 } from '../lib/thermal-print';
 
 const SERVICE_PRICES: Record<ServiceType, number> = {
@@ -278,6 +279,22 @@ export const ReceiptModal: React.FC<{
   const paymentLabel = !record.bankAccountId || record.bankAccountId === 'cash_chest'
     ? 'Cash'
     : paymentAccount?.bankName || 'Bank Deposit';
+  const thermalItems = [
+    ...lines.map((line, index) => ({
+      id: `service-${index}`,
+      name: SERVICE_LABELS[line.serviceType as ServiceType] ?? line.serviceType,
+      partNumber: 'SERVICE',
+      qty: 1,
+      amount: Number(line.price),
+    })),
+    ...(record.parts || []).map(part => ({
+      id: `part-${part.productId}`,
+      name: part.name,
+      partNumber: part.partNumber,
+      qty: part.qty,
+      amount: part.qty * part.sellingPrice,
+    })),
+  ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm p-4">
@@ -294,74 +311,21 @@ export const ReceiptModal: React.FC<{
         />
 
         <div className="overflow-y-auto flex-1 print-area bg-white thermal-print-container thermal-paper-80x210">
-          <div className="thermal-paper p-6 font-mono text-[11px] leading-relaxed text-neutral-800">
-          <div className="text-center">
-            <p className="text-sm font-bold uppercase tracking-wider">RAIS MOTOR WORKSHOP</p>
-            <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>
-            <p className="text-[10px] text-neutral-500 font-sans">Mob: 0321-4567812 | Certified Technicians</p>
-            <div className="border-b border-dashed border-neutral-300 my-3" />
-          </div>
-
-          <div className="space-y-1.5 text-[11px]">
-            {[
-              ['Job Ticket',    record.invoiceNumber],
-              ['Date',          new Date(record.date).toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' })],
-              ['Customer',      record.customerName],
-              ['Phone',         record.customerPhone],
-              ['Bike Model',    `Honda ${record.bikeModel}`],
-              ['Payment',       paymentLabel],
-            ].map(([label, value]) => (
-              <div key={label} className="flex justify-between gap-3">
-                <span className="text-neutral-500">{label}:</span>
-                <span className="font-bold text-neutral-800 text-right">{value}</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="border-b border-dashed border-neutral-300 my-3" />
-
-          <div className="space-y-2">
-            <div className="flex justify-between text-[10px] font-bold uppercase text-neutral-500">
-              <span>Service</span><span>Charges</span>
-            </div>
-            {lines.map((line, i) => (
-              <div key={i} className="flex justify-between bg-neutral-50 p-2 rounded border border-neutral-100">
-                <span className="text-neutral-800 font-bold">{SERVICE_LABELS[line.serviceType as ServiceType] ?? line.serviceType}</span>
-                <span className="font-mono shrink-0">Rs. {Number(line.price).toLocaleString()}</span>
-              </div>
-            ))}
-            {(record.parts || []).map(part => (
-              <div key={part.productId} className="flex justify-between bg-red-50/50 p-2 rounded border border-red-100">
-                <span className="text-neutral-800 font-bold">{part.name} <span className="text-[9px] text-neutral-400 font-normal">×{part.qty}</span></span>
-                <span className="font-mono shrink-0">Rs. {(part.qty * part.sellingPrice).toLocaleString()}</span>
-              </div>
-            ))}
-            {record.notes && (
-              <p className="text-[10px] text-neutral-400 italic px-1">Notes: "{record.notes}"</p>
-            )}
-            {(lines.length > 1 || (record.parts || []).length > 0) && (
-              <div className="flex justify-between font-bold border-t border-dashed border-neutral-200 pt-2 mt-1">
-                <span>TOTAL</span>
-                <span className="font-mono">Rs. {record.price.toLocaleString()}</span>
-              </div>
-            )}
-          </div>
-
-          {hasOilChange && (
-            <div className="mt-3 p-2.5 border border-red-200 bg-red-50/60 rounded text-center">
-              <p className="font-bold text-red-600 text-[10px]">⚠ OIL CHANGE REMINDER SCHEDULED</p>
-              <p className="text-[10px] text-neutral-500 font-sans mt-0.5">
-                Next Due: <strong className="text-neutral-800">
-                  {new Date(new Date().setDate(new Date().getDate() + 30)).toLocaleDateString('en-PK', { day:'2-digit', month:'short', year:'numeric' })}
-                </strong>
-              </p>
-            </div>
-          )}
-
-          <div className="border-b border-dashed border-neutral-300 my-3" />
-          <p className="text-center text-[10px] font-bold uppercase text-neutral-700">Thank you for choosing Rais Honda!</p>
-          <p className="text-center text-[10px] text-neutral-400 font-sans mt-0.5">Check engine oil every 1000 km. Drive safely.</p>
-          </div>
+          <ThermalInvoice
+            invoiceNumber={record.invoiceNumber}
+            date={record.date}
+            customerName={record.customerName}
+            customerPhone={record.customerPhone}
+            customerBikeModel={record.bikeModel ? `Honda ${record.bikeModel}` : undefined}
+            items={thermalItems}
+            subtotal={record.price}
+            taxRate={0}
+            taxAmount={0}
+            finalAmount={record.price}
+            paymentLabel={paymentLabel}
+            notes={record.notes}
+            reminder={hasOilChange ? 'Oil change reminder scheduled' : undefined}
+          />
         </div>
         <InvoicePrintFooter onPrint={() => window.print()} onClose={onClose} />
       </div>

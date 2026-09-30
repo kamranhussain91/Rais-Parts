@@ -16,6 +16,7 @@ import {
 import {
   InvoicePrintFooter,
   InvoicePrintHeader,
+  ThermalInvoice,
 } from '../lib/thermal-print';
 
 export const POSView: React.FC = () => {
@@ -592,55 +593,28 @@ export const POSView: React.FC = () => {
             {/* SCROLLABLE RECEIPT */}
              <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? 'thermal-print-container thermal-paper-80x210' : ''}`}>
               {printFormat === 'Thermal' ? (
-                <div className="thermal-paper mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
-                  <div className="text-center font-bold">
-                    <h2 className="text-sm uppercase tracking-wide">RAIS HONDA PARTS</h2>
-                    <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>
-                    <p className="text-[10px] text-neutral-500 font-sans">Phone: 042-36814912 | NTN: 7721590-3</p>
-                    <div className="border-b border-dashed border-neutral-300 my-2" />
-                  </div>
-                  <div className="space-y-1 text-[10px]">
-                    <div className="flex justify-between"><span>Receipt:</span><span className="font-bold">{activeReceipt.invoiceNumber}</span></div>
-                    <div className="flex justify-between"><span>Date:</span><span>{new Date(activeReceipt.date).toLocaleString()}</span></div>
-                    <div className="flex justify-between"><span>Customer:</span><span className="font-bold">{activeReceipt.customerName}</span></div>
-                    {activeReceipt.customerPhone !== 'N/A' && <div className="flex justify-between"><span>Phone:</span><span>{activeReceipt.customerPhone}</span></div>}
-                    {activeReceipt.customerBikeModel && <div className="flex justify-between"><span>Bike:</span><span>{activeReceipt.customerBikeModel}</span></div>}
-                  </div>
-                  <div className="border-b border-dashed border-neutral-300 my-2" />
-                  <div className="font-bold grid grid-cols-12 gap-1 text-[10px] uppercase pb-1 border-b border-neutral-100">
-                    <span className="col-span-6">Item</span><span className="col-span-2 text-center">Qty</span><span className="col-span-4 text-right">Amt</span>
-                  </div>
-                  <div className="divide-y divide-neutral-100/30 text-[10px] py-1.5 space-y-1.5">
-                    {activeReceipt.items.map(item => (
-                      <div key={item.productId} className="grid grid-cols-12 gap-1">
-                        <div className="col-span-6"><span className="font-bold block leading-tight">{item.name}</span><span className="text-[9px] text-neutral-400">P/N: {item.partNumber}</span></div>
-                        <span className="col-span-2 text-center font-mono">{item.qty}</span>
-                        <span className="col-span-4 text-right font-mono">Rs.{item.sellingPrice * item.qty}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="border-b border-dashed border-neutral-300 my-2" />
-                  <div className="space-y-1 text-[10px]">
-                    <div className="flex justify-between"><span>Subtotal:</span><span>Rs.{activeReceipt.subtotal}</span></div>
-                    {activeReceipt.discount > 0 && <div className="flex justify-between text-rose-600"><span>Discount:</span><span>-Rs.{activeReceipt.discount}</span></div>}
-                    <div className="flex justify-between"><span>GST ({activeReceipt.taxRate ?? 18}%):</span><span>+Rs.{activeReceipt.taxAmount ?? 0}</span></div>
-                    <div className="flex justify-between font-bold text-xs pt-1 border-t border-neutral-100"><span>TOTAL:</span><span>Rs.{activeReceipt.finalAmount}</span></div>
-                    {/* Payment breakdown */}
-                    {(activeReceipt.paymentStatus === 'Partial' || ((activeReceipt as any).amountDue ?? 0) > 0) ? (
-                      <>
-                        <div className="flex justify-between text-emerald-700 font-bold"><span>PAID NOW:</span><span>Rs.{(activeReceipt as any).amountPaid ?? activeReceipt.finalAmount}</span></div>
-                        <div className="flex justify-between text-amber-700 font-bold border border-dashed border-amber-400 px-1 py-0.5 rounded"><span>CREDIT DUE:</span><span>Rs.{(activeReceipt as any).amountDue ?? 0}</span></div>
-                      </>
-                    ) : (
-                      <div className="flex justify-between italic text-[9px] text-neutral-500 mt-1"><span>Method:</span><span>{getPaymentAccountLabel(activeReceipt.bankAccountId, activeReceipt.paymentMethod)}</span></div>
-                    )}
-                  </div>
-                  <div className="border-b border-dashed border-neutral-300 my-3" />
-                  <div className="text-center text-[10px] space-y-1">
-                    <p className="font-bold">Thank You for visiting!</p>
-                    <p className="text-neutral-400 text-[9px] font-sans">Genuine Honda parts guarantee engine safety.</p>
-                  </div>
-                </div>
+                 <ThermalInvoice
+                   invoiceNumber={activeReceipt.invoiceNumber}
+                   date={activeReceipt.date}
+                   customerName={activeReceipt.customerName}
+                   customerPhone={activeReceipt.customerPhone}
+                   customerBikeModel={activeReceipt.customerBikeModel}
+                   items={activeReceipt.items.map(item => ({
+                     id: item.productId,
+                     name: item.name,
+                     partNumber: item.partNumber,
+                     qty: item.qty,
+                     amount: item.sellingPrice * item.qty,
+                   }))}
+                   subtotal={activeReceipt.subtotal}
+                   discount={activeReceipt.discount}
+                   taxRate={activeReceipt.taxRate}
+                   taxAmount={activeReceipt.taxAmount}
+                   finalAmount={activeReceipt.finalAmount}
+                   paymentLabel={getPaymentAccountLabel(activeReceipt.bankAccountId, activeReceipt.paymentMethod)}
+                   amountPaid={(activeReceipt as any).amountPaid}
+                   amountDue={(activeReceipt as any).amountDue}
+                 />
               ) : (
                 <div className="text-neutral-800 text-xs font-sans leading-relaxed p-6">
                   <div className="flex justify-between items-start">

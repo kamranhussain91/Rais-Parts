@@ -30,7 +30,7 @@
     margin: 10mm;
   }
   @page thermal-80x210 {
-    size: 80mm 210mm;
+    size: 80mm auto;
     margin: 0;
   }
   @page thermal-80x297 {
@@ -89,7 +89,7 @@
     width: 72mm !important;
     max-width: 72mm !important;
     min-width: 72mm !important;
-    min-height: 210mm;
+    min-height: 0;
     margin: 0 !important;
     padding: 3mm !important;
     box-sizing: border-box;
@@ -132,6 +132,11 @@
   .thermal-paper table {
     table-layout: fixed;
     border-collapse: collapse;
+  }
+  .thermal-invoice,
+  .thermal-invoice * {
+    font-family: Arial, Helvetica, sans-serif !important;
+    line-height: 1.25;
   }
   .thermal-paper .flex.justify-between > :last-child {
     min-width: 0;
@@ -176,4 +181,10 @@ body {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+.thermal-invoice,
+.thermal-invoice * {
+  font-family: Arial, Helvetica, sans-serif !important;
+  line-height: 1.25;
 }

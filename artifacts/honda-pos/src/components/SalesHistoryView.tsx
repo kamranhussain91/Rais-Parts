@@ -18,6 +18,7 @@ import {
 import {
   InvoicePrintFooter,
   InvoicePrintHeader,
+  ThermalInvoice,
 } from '../lib/thermal-print';
 
 const formatDate = (iso: string) => {
@@ -76,47 +77,28 @@ const ReceiptModal: React.FC<{
 
         <div className={`overflow-y-auto flex-1 print-area bg-white p-4 ${printFormat === 'Thermal' ? 'thermal-print-container thermal-paper-80x210' : ''}`}>
           {printFormat === 'Thermal' ? (
-            <div className="thermal-paper mx-auto text-neutral-800 text-[11px] font-mono leading-relaxed" style={{ maxWidth: '300px' }}>
-              <div className="text-center font-bold">
-                <h2 className="text-sm uppercase tracking-wide">RAIS HONDA PARTS</h2>
-                <p className="text-[10px] text-neutral-500 font-sans mt-0.5">Allama Iqbal Road, Dharampura, Lahore</p>
-                <p className="text-[10px] text-neutral-500 font-sans">Phone: 042-36814912 | NTN: 7721590-3</p>
-                <div className="border-b border-dashed border-neutral-300 my-2" />
-              </div>
-              <div className="space-y-1 text-[10px]">
-                <div className="flex justify-between"><span>Receipt:</span><span className="font-bold">{invoice.invoiceNumber}</span></div>
-                <div className="flex justify-between"><span>Date:</span><span>{new Date(invoice.date).toLocaleString()}</span></div>
-                <div className="flex justify-between"><span>Customer:</span><span className="font-bold">{invoice.customerName}</span></div>
-                {invoice.customerPhone !== 'N/A' && <div className="flex justify-between"><span>Phone:</span><span>{invoice.customerPhone}</span></div>}
-                {invoice.customerBikeModel && <div className="flex justify-between"><span>Bike:</span><span>{invoice.customerBikeModel}</span></div>}
-              </div>
-              <div className="border-b border-dashed border-neutral-300 my-2" />
-              <div className="font-bold grid grid-cols-12 gap-1 text-[10px] uppercase pb-1 border-b border-neutral-100">
-                <span className="col-span-6">Item</span><span className="col-span-2 text-center">Qty</span><span className="col-span-4 text-right">Amt</span>
-              </div>
-              <div className="divide-y divide-neutral-100/30 text-[10px] py-1.5 space-y-1.5">
-                {invoice.items.map((item: SaleItem) => (
-                  <div key={item.productId} className="grid grid-cols-12 gap-1">
-                    <div className="col-span-6"><span className="font-bold block leading-tight">{item.name}</span><span className="text-[9px] text-neutral-400">P/N: {item.partNumber}</span></div>
-                    <span className="col-span-2 text-center font-mono">{item.qty}</span>
-                    <span className="col-span-4 text-right font-mono">Rs.{item.sellingPrice * item.qty}</span>
-                  </div>
-                ))}
-              </div>
-              <div className="border-b border-dashed border-neutral-300 my-2" />
-              <div className="space-y-1 text-[10px]">
-                <div className="flex justify-between"><span>Subtotal:</span><span>Rs.{invoice.subtotal}</span></div>
-                {invoice.discount > 0 && <div className="flex justify-between text-rose-600"><span>Discount:</span><span>-Rs.{invoice.discount}</span></div>}
-                <div className="flex justify-between"><span>GST ({(invoice as any).taxRate ?? 18}%):</span><span>+Rs.{(invoice as any).taxAmount ?? 0}</span></div>
-                <div className="flex justify-between font-bold text-xs pt-1 border-t border-neutral-100"><span>TOTAL:</span><span>Rs.{invoice.finalAmount}</span></div>
-                <div className="flex justify-between italic text-[9px] text-neutral-500 mt-1"><span>Method:</span><span>{paymentLabel}</span></div>
-              </div>
-              <div className="border-b border-dashed border-neutral-300 my-3" />
-              <div className="text-center text-[10px] space-y-1">
-                <p className="font-bold">Thank You for visiting!</p>
-                <p className="text-neutral-400 text-[9px] font-sans">Genuine Honda parts guarantee engine safety.</p>
-              </div>
-            </div>
+            <ThermalInvoice
+              invoiceNumber={invoice.invoiceNumber}
+              date={invoice.date}
+              customerName={invoice.customerName}
+              customerPhone={invoice.customerPhone}
+              customerBikeModel={invoice.customerBikeModel}
+              items={invoice.items.map((item: SaleItem) => ({
+                id: item.productId,
+                name: item.name,
+                partNumber: item.partNumber,
+                qty: item.qty,
+                amount: item.sellingPrice * item.qty,
+              }))}
+              subtotal={invoice.subtotal}
+              discount={invoice.discount}
+              taxRate={(invoice as any).taxRate}
+              taxAmount={(invoice as any).taxAmount}
+              finalAmount={invoice.finalAmount}
+              paymentLabel={paymentLabel}
+              amountPaid={(invoice as any).amountPaid}
+              amountDue={(invoice as any).amountDue}
+            />
           ) : (
             <div className="text-neutral-800 text-xs font-sans leading-relaxed p-4">
               <div className="flex justify-between items-start">
