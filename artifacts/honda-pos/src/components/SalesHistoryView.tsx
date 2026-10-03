@@ -179,7 +179,7 @@ const ReceiptModal: React.FC<{
             </div>
           )}
         </div>
-        <InvoicePrintFooter onPrint={handlePrint} onClose={onClose} format={printFormat} />
+        <InvoicePrintFooter onPrint={handlePrint} onClose={onClose} />
       </div>
     </div>
   );

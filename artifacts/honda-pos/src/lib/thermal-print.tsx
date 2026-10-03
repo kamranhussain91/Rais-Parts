@@ -24,8 +24,6 @@ export const THERMAL_SHOP_INFO = {
 const THERMAL_PAPER_WIDTH_STORAGE_KEY = 'rais-honda-thermal-paper-width';
 const THERMAL_PRINT_START_TIMEOUT_MS = 2_000;
 const THERMAL_PRINT_DOCUMENT_MAX_WAIT_MS = 1_000;
-const THERMAL_TEAR_OFF_MARGIN_MM = 2.5;
-const THERMAL_PAGE_ROUNDING_SLACK_MM = 0.5;
 
 const readSavedThermalPaperWidth = (): ThermalPaperWidth => {
   if (typeof window === 'undefined') return 80;
@@ -259,11 +257,6 @@ const prepareThermalPrintDocument = async (
       color: #000 !important;
     }
     body { overflow: visible !important; }
-    .thermal-receipt-content { padding-bottom: 0 !important; }
-    .thermal-receipt-content > :last-child {
-      margin-bottom: 0 !important;
-      padding-bottom: 0 !important;
-    }
   `;
   printDocument.head.appendChild(baseStyles);
 
@@ -280,11 +273,7 @@ const prepareThermalPrintDocument = async (
     }
 
     const receiptHeightMm = receiptHeightPx * 25.4 / 96;
-    const pageHeightMm = Number((
-      receiptHeightMm
-      + THERMAL_TEAR_OFF_MARGIN_MM
-      + THERMAL_PAGE_ROUNDING_SLACK_MM
-    ).toFixed(3));
+    const pageHeightMm = Math.ceil((receiptHeightMm + 8) * 10) / 10;
     pageStyles.textContent = `
       @page {
         size: ${paperWidth}mm ${pageHeightMm}mm;
@@ -293,30 +282,18 @@ const prepareThermalPrintDocument = async (
       @media print {
         html, body {
           width: ${paperWidth}mm !important;
-          height: ${pageHeightMm}mm !important;
-          min-height: 0 !important;
-          max-height: ${pageHeightMm}mm !important;
+          min-width: ${paperWidth}mm !important;
           margin: 0 !important;
           padding: 0 !important;
-          overflow: hidden !important;
-          box-sizing: border-box !important;
         }
         .thermal-receipt {
-          margin: 0 !important;
-          padding-bottom: 0 !important;
+          margin: 0 auto !important;
           page-break-inside: avoid;
           break-inside: avoid;
         }
-        .thermal-receipt-content {
-          padding-bottom: 0 !important;
-        }
-        .thermal-receipt-content > :last-child {
-          margin-bottom: 0 !important;
-          padding-bottom: 0 !important;
-        }
       }
     `;
-    return { receiptHeightPx, pageHeightMm };
+    return receiptHeightPx;
   };
 
   printDocument.head.appendChild(pageStyles);
@@ -450,6 +427,14 @@ export const printThermalReceipt = async (
       throw new Error('The receipt preview element was not found. Close and reopen the invoice, then try again.');
     }
 
+    // Reserve the fallback synchronously in the click handler, before any waits,
+    // so popup blockers still recognize it as user initiated.
+    try {
+      fallbackWindow = openThermalFallbackWindow();
+    } catch (error) {
+      console.warn('The thermal print fallback window could not be reserved.', error);
+    }
+
     let frameFailure: unknown;
     let frameWindow: Window | null = null;
     try {
@@ -479,13 +464,14 @@ export const printThermalReceipt = async (
       cleanupFrame = watchAfterPrint(frameWindow, () => frame?.remove());
 
       const frameReceipt = await prepareThermalPrintDocument(frameDocument, receiptElement, paperWidth);
-      const { pageHeightMm } = frameReceipt.refreshPageSize();
-      frame.style.height = `${Math.ceil(pageHeightMm * 96 / 25.4)}px`;
+      const initialHeightPx = frameReceipt.refreshPageSize();
+      frame.style.height = `${Math.max(1_200, Math.ceil(initialHeightPx + 40))}px`;
       await new Promise<void>(resolve => window.setTimeout(resolve, 35));
       frameReceipt.refreshPageSize();
 
       const frameResult = await requestPrintStart(frameWindow, () => {
         framePrintStarted = true;
+        if (fallbackWindow && !fallbackWindow.closed) fallbackWindow.close();
       });
       if (frameResult.started) return;
       frameFailure = frameResult.error ?? new Error('The hidden-frame print dialog did not start within 2 seconds.');
@@ -493,14 +479,8 @@ export const printThermalReceipt = async (
       frameFailure = error;
     }
 
-    console.error('Thermal receipt iframe printing failed; opening the popup fallback.', frameFailure);
+    console.error('Thermal receipt iframe printing failed; trying the reserved popup fallback.', frameFailure);
     cleanupFrame();
-
-    try {
-      fallbackWindow = openThermalFallbackWindow();
-    } catch (error) {
-      console.warn('The thermal print fallback window could not be opened after the iframe failed.', error);
-    }
 
     if (!fallbackWindow || fallbackWindow.closed) {
       throw new Error(
@@ -781,8 +761,7 @@ export const InvoicePrintFooter: React.FC<{
   onPrint: () => void | Promise<void>;
   onClose: () => void;
   closeLabel?: string;
-  format?: InvoicePrintFormat;
-}> = ({ onPrint, onClose, closeLabel = 'Close', format }) => {
+}> = ({ onPrint, onClose, closeLabel = 'Close' }) => {
   const [isPreparing, setIsPreparing] = useState(false);
   const [printError, setPrintError] = useState('');
   const isPreparingRef = useRef(false);
@@ -834,11 +813,6 @@ export const InvoicePrintFooter: React.FC<{
           {closeLabel}
         </button>
       </div>
-      {format === 'Thermal' && (
-        <p className="mt-1 -mx-5 text-center text-[clamp(7px,2vw,10px)] leading-3 text-neutral-400 whitespace-nowrap">
-          In the print window: Margins None, Scale 100%, and choose your receipt/roll paper size.
-        </p>
-      )}
     </div>
   );
 };

@@ -339,7 +339,6 @@ export const ReceiptModal: React.FC<{
         <InvoicePrintFooter
           onPrint={() => printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth)}
           onClose={onClose}
-          format="Thermal"
         />
       </div>
     </div>
