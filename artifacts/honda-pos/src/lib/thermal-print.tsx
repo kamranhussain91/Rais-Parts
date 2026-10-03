@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Printer, X } from 'lucide-react';
 
 export type InvoicePrintFormat = 'A4' | 'Thermal';
@@ -22,6 +22,8 @@ export const THERMAL_SHOP_INFO = {
 } as const;
 
 const THERMAL_PAPER_WIDTH_STORAGE_KEY = 'rais-honda-thermal-paper-width';
+const THERMAL_PRINT_START_TIMEOUT_MS = 2_000;
+const THERMAL_PRINT_DOCUMENT_MAX_WAIT_MS = 1_000;
 
 const readSavedThermalPaperWidth = (): ThermalPaperWidth => {
   if (typeof window === 'undefined') return 80;
@@ -214,44 +216,36 @@ export const THERMAL_RECEIPT_STYLES = `
   }
 `;
 
-export const printThermalReceipt = async (
-  receiptElement: HTMLElement | null,
+const waitForPrintDocument = async (printDocument: Document) => {
+  const documentReady = printDocument.readyState === 'complete'
+    ? Promise.resolve()
+    : new Promise<void>(resolve => {
+        printDocument.defaultView?.addEventListener('load', () => resolve(), { once: true });
+      });
+  const fontsReady = printDocument.fonts?.ready.then(() => undefined, () => undefined) ?? Promise.resolve();
+  const minimumLayoutDelay = new Promise<void>(resolve => window.setTimeout(resolve, 50));
+  const maximumWait = new Promise<void>(resolve =>
+    window.setTimeout(resolve, THERMAL_PRINT_DOCUMENT_MAX_WAIT_MS),
+  );
+
+  await Promise.race([
+    Promise.all([documentReady, fontsReady, minimumLayoutDelay]),
+    maximumWait,
+  ]);
+};
+
+const prepareThermalPrintDocument = async (
+  printDocument: Document,
+  receiptElement: HTMLElement,
   paperWidth: ThermalPaperWidth,
 ) => {
-  if (!receiptElement) {
-    throw new Error('Thermal receipt is not ready to print.');
-  }
-
-  const printableWidth = paperWidth === 80 ? 72 : 48;
-  const frame = document.createElement('iframe');
-  frame.title = 'Thermal receipt print document';
-  frame.setAttribute('aria-hidden', 'true');
-  frame.style.cssText = [
-    'position:fixed',
-    'left:-10000px',
-    'top:0',
-    'width:1px',
-    'height:1px',
-    'border:0',
-    'opacity:1',
-    'pointer-events:none',
-  ].join(';');
-  document.body.appendChild(frame);
-
-  const frameDocument = frame.contentDocument;
-  const frameWindow = frame.contentWindow;
-  if (!frameDocument || !frameWindow) {
-    frame.remove();
-    throw new Error('Could not create the isolated thermal print document.');
-  }
-
-  frameDocument.open();
-  frameDocument.write(
+  printDocument.open();
+  printDocument.write(
     '<!doctype html><html><head><meta charset="utf-8"><title>Thermal Receipt</title></head><body></body></html>',
   );
-  frameDocument.close();
+  printDocument.close();
 
-  const baseStyles = frameDocument.createElement('style');
+  const baseStyles = printDocument.createElement('style');
   baseStyles.textContent = `
     ${THERMAL_RECEIPT_STYLES}
     html, body {
@@ -264,49 +258,269 @@ export const printThermalReceipt = async (
     }
     body { overflow: visible !important; }
   `;
-  frameDocument.head.appendChild(baseStyles);
+  printDocument.head.appendChild(baseStyles);
 
   const clonedReceipt = receiptElement.cloneNode(true) as HTMLElement;
-  frameDocument.body.appendChild(clonedReceipt);
+  printDocument.body.appendChild(clonedReceipt);
+  await waitForPrintDocument(printDocument);
 
-  await new Promise<void>(resolve => {
-    frameWindow.requestAnimationFrame(() => frameWindow.requestAnimationFrame(() => resolve()));
+  const pageStyles = printDocument.createElement('style');
+  const refreshPageSize = () => {
+    const renderedHeightPx = clonedReceipt.getBoundingClientRect().height;
+    const receiptHeightPx = renderedHeightPx > 0 ? renderedHeightPx : clonedReceipt.scrollHeight;
+    if (!Number.isFinite(receiptHeightPx) || receiptHeightPx <= 0) {
+      throw new Error('The receipt has no measurable content in the print document.');
+    }
+
+    const receiptHeightMm = receiptHeightPx * 25.4 / 96;
+    const pageHeightMm = Math.ceil((receiptHeightMm + 8) * 10) / 10;
+    pageStyles.textContent = `
+      @page {
+        size: ${paperWidth}mm ${pageHeightMm}mm;
+        margin: 0;
+      }
+      @media print {
+        html, body {
+          width: ${paperWidth}mm !important;
+          min-width: ${paperWidth}mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
+        .thermal-receipt {
+          margin: 0 auto !important;
+          page-break-inside: avoid;
+          break-inside: avoid;
+        }
+      }
+    `;
+    return receiptHeightPx;
+  };
+
+  printDocument.head.appendChild(pageStyles);
+  return { refreshPageSize };
+};
+
+const openThermalFallbackWindow = () => {
+  const fallbackWindow = window.open(
+    '',
+    '_blank',
+    'popup=yes,width=480,height=720,resizable=yes,scrollbars=yes',
+  );
+  if (!fallbackWindow) return null;
+
+  try {
+    fallbackWindow.document.open();
+    fallbackWindow.document.write(`<!doctype html>
+      <html><head><meta charset="utf-8"><title>Preparing thermal receipt</title>
+      <style>body{font:14px Arial,sans-serif;padding:24px;color:#111}</style></head>
+      <body>Preparing receipt…</body></html>`);
+    fallbackWindow.document.close();
+  } catch (error) {
+    console.warn('Could not show the thermal print fallback loading message.', error);
+  }
+  return fallbackWindow;
+};
+
+const requestPrintStart = (
+  printWindow: Window,
+  onStarted: () => void,
+): Promise<{ started: boolean; error?: unknown }> => new Promise(resolve => {
+  let settled = false;
+  let timeoutId: number | undefined;
+  const signalWindows = printWindow === window ? [printWindow] : [printWindow, window];
+  const finish = (started: boolean, error?: unknown) => {
+    if (settled) return;
+    settled = true;
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    signalWindows.forEach(signalWindow => {
+      signalWindow.removeEventListener('beforeprint', handlePrintSignal);
+      signalWindow.removeEventListener('afterprint', handlePrintSignal);
+    });
+    if (started) {
+      try {
+        onStarted();
+      } catch (error) {
+        console.warn('Could not finish thermal print setup after the print signal.', error);
+      }
+    }
+    resolve({ started, error });
+  };
+  const handlePrintSignal = () => finish(true);
+
+  signalWindows.forEach(signalWindow => {
+    signalWindow.addEventListener('beforeprint', handlePrintSignal);
+    signalWindow.addEventListener('afterprint', handlePrintSignal);
   });
+  timeoutId = window.setTimeout(
+    () => finish(false),
+    THERMAL_PRINT_START_TIMEOUT_MS,
+  );
 
-  const receiptHeightMm = clonedReceipt.getBoundingClientRect().height * 25.4 / 96;
-  const pageHeightMm = Math.ceil((receiptHeightMm + 8) * 10) / 10;
-  const pageStyles = frameDocument.createElement('style');
-  pageStyles.textContent = `
-    @page {
-      size: ${paperWidth}mm ${pageHeightMm}mm;
-      margin: 0;
-    }
-    @media print {
-      html, body {
-        width: ${paperWidth}mm !important;
-        min-width: ${paperWidth}mm !important;
-        margin: 0 !important;
-        padding: 0 !important;
-      }
-      .thermal-receipt {
-        margin: 0 auto !important;
-        page-break-inside: avoid;
-        break-inside: avoid;
-      }
-    }
-  `;
-  frameDocument.head.appendChild(pageStyles);
+  try {
+    printWindow.focus();
+    printWindow.print();
+  } catch (error) {
+    finish(false, error);
+  }
+});
 
+const watchAfterPrint = (printWindow: Window, cleanup: () => void) => {
   let cleanedUp = false;
-  const cleanup = () => {
+  let timeoutId: number | undefined;
+  const finish = () => {
     if (cleanedUp) return;
     cleanedUp = true;
-    frame.remove();
+    printWindow.removeEventListener('afterprint', finish);
+    if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+    cleanup();
   };
-  frameWindow.addEventListener('afterprint', cleanup, { once: true });
-  window.setTimeout(cleanup, 60_000);
-  frameWindow.focus();
-  frameWindow.print();
+
+  printWindow.addEventListener('afterprint', finish, { once: true });
+  timeoutId = window.setTimeout(finish, 60_000);
+  return finish;
+};
+
+let thermalPrintNoticeTimer: number | undefined;
+const showThermalPrintNotice = (message: string) => {
+  document.getElementById('thermal-print-notice')?.remove();
+  if (thermalPrintNoticeTimer !== undefined) window.clearTimeout(thermalPrintNoticeTimer);
+
+  const notice = document.createElement('div');
+  notice.id = 'thermal-print-notice';
+  notice.setAttribute('role', 'alert');
+  notice.setAttribute('aria-live', 'assertive');
+  notice.textContent = message;
+  notice.style.cssText = [
+    'position:fixed',
+    'left:50%',
+    'bottom:20px',
+    'transform:translateX(-50%)',
+    'z-index:2147483647',
+    'max-width:calc(100vw - 32px)',
+    'padding:12px 16px',
+    'border-radius:10px',
+    'background:#111827',
+    'color:#fff',
+    'font:600 14px/1.45 Arial,Helvetica,sans-serif',
+    'box-shadow:0 8px 28px rgba(0,0,0,.28)',
+    'text-align:center',
+  ].join(';');
+  document.body.appendChild(notice);
+  thermalPrintNoticeTimer = window.setTimeout(() => notice.remove(), 12_000);
+};
+
+const errorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : String(error ?? 'Unknown browser error');
+
+export const printThermalReceipt = async (
+  receiptElement: HTMLElement | null,
+  paperWidth: ThermalPaperWidth,
+): Promise<void> => {
+  let fallbackWindow: Window | null = null;
+  let frame: HTMLIFrameElement | null = null;
+  let framePrintStarted = false;
+  let fallbackPrintStarted = false;
+  let cleanupFrame = () => {};
+
+  try {
+    if (!receiptElement) {
+      throw new Error('The receipt preview element was not found. Close and reopen the invoice, then try again.');
+    }
+
+    // Reserve the fallback synchronously in the click handler, before any waits,
+    // so popup blockers still recognize it as user initiated.
+    try {
+      fallbackWindow = openThermalFallbackWindow();
+    } catch (error) {
+      console.warn('The thermal print fallback window could not be reserved.', error);
+    }
+
+    let frameFailure: unknown;
+    let frameWindow: Window | null = null;
+    try {
+      frame = document.createElement('iframe');
+      frame.title = 'Thermal receipt print document';
+      frame.tabIndex = -1;
+      frame.setAttribute('aria-hidden', 'true');
+      frame.style.cssText = [
+        'position:fixed',
+        'left:0',
+        'top:0',
+        `width:${paperWidth}mm`,
+        'height:1600px',
+        'border:0',
+        'opacity:0',
+        'pointer-events:none',
+        'z-index:-1',
+      ].join(';');
+      document.body.appendChild(frame);
+      cleanupFrame = () => frame?.remove();
+
+      const frameDocument = frame.contentDocument;
+      frameWindow = frame.contentWindow;
+      if (!frameDocument || !frameWindow) {
+        throw new Error('The browser could not create the isolated print document.');
+      }
+      cleanupFrame = watchAfterPrint(frameWindow, () => frame?.remove());
+
+      const frameReceipt = await prepareThermalPrintDocument(frameDocument, receiptElement, paperWidth);
+      const initialHeightPx = frameReceipt.refreshPageSize();
+      frame.style.height = `${Math.max(1_200, Math.ceil(initialHeightPx + 40))}px`;
+      await new Promise<void>(resolve => window.setTimeout(resolve, 35));
+      frameReceipt.refreshPageSize();
+
+      const frameResult = await requestPrintStart(frameWindow, () => {
+        framePrintStarted = true;
+        if (fallbackWindow && !fallbackWindow.closed) fallbackWindow.close();
+      });
+      if (frameResult.started) return;
+      frameFailure = frameResult.error ?? new Error('The hidden-frame print dialog did not start within 2 seconds.');
+    } catch (error) {
+      frameFailure = error;
+    }
+
+    console.error('Thermal receipt iframe printing failed; trying the reserved popup fallback.', frameFailure);
+    cleanupFrame();
+
+    if (!fallbackWindow || fallbackWindow.closed) {
+      throw new Error(
+        `The print dialog did not start (${errorMessage(frameFailure)}). This browser blocked the fallback pop-up. Allow pop-ups for this site in your browser settings and retry. If print dialogs are restricted by your device, enable printing or use an allowed browser.`,
+      );
+    }
+
+    try {
+      const fallbackDocument = fallbackWindow.document;
+      const fallbackReceipt = await prepareThermalPrintDocument(
+        fallbackDocument,
+        receiptElement,
+        paperWidth,
+      );
+      fallbackReceipt.refreshPageSize();
+      const activeFallbackWindow = fallbackWindow;
+      const cleanupPopup = watchAfterPrint(activeFallbackWindow, () => {
+        if (!activeFallbackWindow.closed) activeFallbackWindow.close();
+      });
+      const fallbackResult = await requestPrintStart(activeFallbackWindow, () => {});
+      if (fallbackResult.started) {
+        fallbackPrintStarted = true;
+        return;
+      }
+      cleanupPopup();
+      throw fallbackResult.error ?? new Error('The fallback print dialog did not start within 2 seconds.');
+    } catch (error) {
+      throw new Error(
+        `The print dialog did not start (${errorMessage(error)}). This browser may be blocking printing or pop-ups. Allow pop-ups for this site in your browser settings; if your device restricts printing, use a browser that permits print dialogs, then retry.`,
+      );
+    }
+  } catch (error) {
+    console.error('Thermal receipt printing failed.', error);
+    showThermalPrintNotice(errorMessage(error));
+  } finally {
+    if (!framePrintStarted) cleanupFrame();
+    if (!fallbackPrintStarted && fallbackWindow && !fallbackWindow.closed) {
+      fallbackWindow.close();
+    }
+  }
 };
 
 const canFitPartNumber = (partNumber: string | undefined, paperWidth: ThermalPaperWidth) => {
@@ -544,24 +758,61 @@ export const InvoicePrintHeader: React.FC<{
 );
 
 export const InvoicePrintFooter: React.FC<{
-  onPrint: () => void;
+  onPrint: () => void | Promise<void>;
   onClose: () => void;
   closeLabel?: string;
-}> = ({ onPrint, onClose, closeLabel = 'Close' }) => (
-  <div className="invoice-print-footer shrink-0 border-t border-neutral-200 bg-white rounded-b-2xl px-5 py-4 flex items-center gap-3 no-print">
-    <button
-      className="flex-1 py-3 bg-red-600 hover:bg-red-700 active:scale-[0.98] text-white rounded-xl text-sm font-bold shadow-md shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer transition-all"
-      onClick={onPrint}
-    >
-      <Printer className="w-4 h-4" />
-      Print Invoice
-    </button>
-    <button
-      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
-      onClick={onClose}
-    >
-      <X className="w-4 h-4" />
-      {closeLabel}
-    </button>
-  </div>
-);
+}> = ({ onPrint, onClose, closeLabel = 'Close' }) => {
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [printError, setPrintError] = useState('');
+  const isPreparingRef = useRef(false);
+
+  const handlePrint = async () => {
+    if (isPreparingRef.current) return;
+    isPreparingRef.current = true;
+    setIsPreparing(true);
+    setPrintError('');
+    try {
+      await onPrint();
+    } catch (error) {
+      console.error('Invoice printing failed.', error);
+      setPrintError(error instanceof Error ? error.message : String(error));
+    } finally {
+      isPreparingRef.current = false;
+      setIsPreparing(false);
+    }
+  };
+
+  return (
+    <div className="invoice-print-footer shrink-0 border-t border-neutral-200 bg-white rounded-b-2xl px-5 py-4 no-print">
+      {printError && (
+        <p role="alert" className="mb-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
+          {printError}
+        </p>
+      )}
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          disabled={isPreparing}
+          aria-busy={isPreparing}
+          className={`flex-1 py-3 text-white rounded-xl text-sm font-bold shadow-md shadow-red-600/20 flex items-center justify-center gap-2 transition-all ${
+            isPreparing
+              ? 'bg-red-500 opacity-75 cursor-wait'
+              : 'bg-red-600 hover:bg-red-700 active:scale-[0.98] cursor-pointer'
+          }`}
+          onClick={() => { void handlePrint(); }}
+        >
+          <Printer className="w-4 h-4" />
+          {isPreparing ? 'Preparing...' : 'Print Invoice'}
+        </button>
+        <button
+          type="button"
+          className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 active:scale-[0.98] text-slate-700 rounded-xl text-sm font-bold flex items-center justify-center gap-2 cursor-pointer transition-all"
+          onClick={onClose}
+        >
+          <X className="w-4 h-4" />
+          {closeLabel}
+        </button>
+      </div>
+    </div>
+  );
+};

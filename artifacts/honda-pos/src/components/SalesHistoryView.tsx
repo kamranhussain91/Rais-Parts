@@ -65,10 +65,9 @@ const ReceiptModal: React.FC<{
 
   const handlePrint = () => {
     if (printFormat === 'Thermal') {
-      void printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth);
-    } else {
-      window.print();
+      return printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth);
     }
+    return window.print();
   };
 
   return (
@@ -87,7 +86,7 @@ const ReceiptModal: React.FC<{
           onClose={onClose}
         />
 
-        <div className={`overflow-y-auto flex-1 bg-white ${printFormat === 'Thermal' ? 'flex justify-center overflow-x-auto' : 'print-area p-4'}`}>
+        <div className={`overflow-y-auto flex-1 bg-white ${printFormat === 'Thermal' ? 'min-h-0 flex justify-center overflow-x-auto' : 'print-area p-4'}`}>
           {printFormat === 'Thermal' ? (
             <ThermalInvoice
               receiptRef={thermalReceiptRef}

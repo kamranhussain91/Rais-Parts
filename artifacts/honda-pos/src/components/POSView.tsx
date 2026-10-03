@@ -76,10 +76,9 @@ export const POSView: React.FC = () => {
   };
   const handleReceiptPrint = () => {
     if (printFormat === 'Thermal') {
-      void printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth);
-    } else {
-      window.print();
+      return printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth);
     }
+    return window.print();
   };
 
   // Customer search results
@@ -604,7 +603,7 @@ export const POSView: React.FC = () => {
              />
 
             {/* SCROLLABLE RECEIPT */}
-             <div className={`overflow-y-auto flex-1 bg-white ${printFormat === 'Thermal' ? 'flex justify-center overflow-x-auto' : 'print-area'}`}>
+             <div className={`overflow-y-auto flex-1 bg-white ${printFormat === 'Thermal' ? 'min-h-0 flex justify-center overflow-x-auto' : 'print-area'}`}>
               {printFormat === 'Thermal' ? (
                  <ThermalInvoice
                     receiptRef={thermalReceiptRef}

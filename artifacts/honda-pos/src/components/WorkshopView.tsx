@@ -317,7 +317,7 @@ export const ReceiptModal: React.FC<{
           onClose={onClose}
         />
 
-        <div className="overflow-y-auto flex-1 bg-white flex justify-center overflow-x-auto">
+        <div className="min-h-0 overflow-y-auto flex-1 bg-white flex justify-center overflow-x-auto">
           <ThermalInvoice
             receiptRef={thermalReceiptRef}
             paperWidth={thermalPaperWidth}
@@ -337,7 +337,7 @@ export const ReceiptModal: React.FC<{
           />
         </div>
         <InvoicePrintFooter
-          onPrint={() => { void printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth); }}
+          onPrint={() => printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth)}
           onClose={onClose}
         />
       </div>
