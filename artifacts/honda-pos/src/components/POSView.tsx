@@ -727,6 +727,7 @@ export const POSView: React.FC = () => {
                 onPrint={handleReceiptPrint}
                onClose={() => { setIsReceiptModalOpen(false); setActiveReceipt(null); }}
                closeLabel="Close & New Sale"
+                format={printFormat}
              />
 
           </div>
