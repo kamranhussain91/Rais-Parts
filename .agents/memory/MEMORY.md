@@ -3,3 +3,4 @@
 - [Workshop Parts Billing](workshop-parts-billing.md) — workshop bills embed labor and inventory parts; posting must update stock, account ledger, customers, dashboards, reports, and sales history together.
 - [Bank account defaults](bank-account-defaults.md) — transaction defaults come from persisted flags with legacy JSON normalization, never legacy account IDs.
 - [Project import handoff](project-import-handoff.md) — restored source files may need registering after a conversation-to-project move.
+- [Thermal receipt printing](thermal-receipt-printing.md) — all thermal sales/workshop receipts share one measured-height, isolated print path; keep A4 and transaction logic unchanged.

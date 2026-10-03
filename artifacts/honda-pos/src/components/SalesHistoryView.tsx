@@ -18,7 +18,9 @@ import {
 import {
   InvoicePrintFooter,
   InvoicePrintHeader,
+  printThermalReceipt,
   ThermalInvoice,
+  useThermalPaperWidth,
 } from '../lib/thermal-print';
 
 const formatDate = (iso: string) => {
@@ -57,9 +59,17 @@ const ReceiptModal: React.FC<{
   onClose: () => void;
 }> = ({ invoice, accounts = [], onClose }) => {
   const [printFormat, setPrintFormat] = useState<'A4' | 'Thermal'>('Thermal');
+  const [thermalPaperWidth, setThermalPaperWidth] = useThermalPaperWidth();
+  const thermalReceiptRef = useRef<HTMLElement>(null);
   const paymentLabel = getInvoicePaymentAccountLabel(invoice, accounts);
 
-  const handlePrint = () => window.print();
+  const handlePrint = () => {
+    if (printFormat === 'Thermal') {
+      void printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth);
+    } else {
+      window.print();
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-neutral-900/70 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -70,14 +80,18 @@ const ReceiptModal: React.FC<{
         <InvoicePrintHeader
           format={printFormat}
           onFormatChange={setPrintFormat}
+          paperWidth={thermalPaperWidth}
+          onPaperWidthChange={setThermalPaperWidth}
           invoiceNumber={invoice.invoiceNumber}
           credit={invoice.paymentStatus === 'Partial' || (invoice as any).amountDue > 0}
           onClose={onClose}
         />
 
-        <div className={`overflow-y-auto flex-1 print-area bg-white p-4 ${printFormat === 'Thermal' ? 'thermal-print-container thermal-paper-80x210' : ''}`}>
+        <div className={`overflow-y-auto flex-1 bg-white ${printFormat === 'Thermal' ? 'flex justify-center overflow-x-auto' : 'print-area p-4'}`}>
           {printFormat === 'Thermal' ? (
             <ThermalInvoice
+              receiptRef={thermalReceiptRef}
+              paperWidth={thermalPaperWidth}
               invoiceNumber={invoice.invoiceNumber}
               date={invoice.date}
               customerName={invoice.customerName}
@@ -87,7 +101,9 @@ const ReceiptModal: React.FC<{
                 id: item.productId,
                 name: item.name,
                 qty: item.qty,
+                rate: item.sellingPrice,
                 amount: item.sellingPrice * item.qty,
+                partNumber: item.partNumber,
               }))}
               subtotal={invoice.subtotal}
               discount={invoice.discount}

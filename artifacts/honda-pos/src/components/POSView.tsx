@@ -16,7 +16,9 @@ import {
 import {
   InvoicePrintFooter,
   InvoicePrintHeader,
+  printThermalReceipt,
   ThermalInvoice,
+  useThermalPaperWidth,
 } from '../lib/thermal-print';
 
 export const POSView: React.FC = () => {
@@ -43,10 +45,12 @@ export const POSView: React.FC = () => {
   const [activeReceipt, setActiveReceipt] = useState<SaleInvoice | null>(null);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState<boolean>(false);
   const [printFormat, setPrintFormat] = useState<'A4' | 'Thermal'>('Thermal');
+  const [thermalPaperWidth, setThermalPaperWidth] = useThermalPaperWidth();
 
   const searchRef = useRef<HTMLInputElement>(null);
   const customerSearchRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const thermalReceiptRef = useRef<HTMLElement>(null);
 
   useEffect(() => { searchRef.current?.focus(); }, []);
 
@@ -69,6 +73,13 @@ export const POSView: React.FC = () => {
     const account = accounts.find(a => a.id === accountId);
     if (account?.id === 'cash_chest' || accountId === 'cash_chest') return 'Cash';
     return account?.bankName || fallback;
+  };
+  const handleReceiptPrint = () => {
+    if (printFormat === 'Thermal') {
+      void printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth);
+    } else {
+      window.print();
+    }
   };
 
   // Customer search results
@@ -585,15 +596,19 @@ export const POSView: React.FC = () => {
              <InvoicePrintHeader
                format={printFormat}
                onFormatChange={setPrintFormat}
+               paperWidth={thermalPaperWidth}
+               onPaperWidthChange={setThermalPaperWidth}
                invoiceNumber={activeReceipt.invoiceNumber}
                credit={activeReceipt.paymentStatus === 'Partial' || (activeReceipt as any).amountDue > 0}
                onClose={() => { setIsReceiptModalOpen(false); setActiveReceipt(null); }}
              />
 
             {/* SCROLLABLE RECEIPT */}
-             <div className={`overflow-y-auto flex-1 print-area bg-white ${printFormat === 'Thermal' ? 'thermal-print-container thermal-paper-80x210' : ''}`}>
+             <div className={`overflow-y-auto flex-1 bg-white ${printFormat === 'Thermal' ? 'flex justify-center overflow-x-auto' : 'print-area'}`}>
               {printFormat === 'Thermal' ? (
                  <ThermalInvoice
+                    receiptRef={thermalReceiptRef}
+                    paperWidth={thermalPaperWidth}
                    invoiceNumber={activeReceipt.invoiceNumber}
                    date={activeReceipt.date}
                    customerName={activeReceipt.customerName}
@@ -603,7 +618,9 @@ export const POSView: React.FC = () => {
                      id: item.productId,
                      name: item.name,
                      qty: item.qty,
+                      rate: item.sellingPrice,
                      amount: item.sellingPrice * item.qty,
+                      partNumber: item.partNumber,
                    }))}
                    subtotal={activeReceipt.subtotal}
                    discount={activeReceipt.discount}
@@ -708,7 +725,7 @@ export const POSView: React.FC = () => {
             </div>
 
              <InvoicePrintFooter
-               onPrint={() => window.print()}
+                onPrint={handleReceiptPrint}
                onClose={() => { setIsReceiptModalOpen(false); setActiveReceipt(null); }}
                closeLabel="Close & New Sale"
              />

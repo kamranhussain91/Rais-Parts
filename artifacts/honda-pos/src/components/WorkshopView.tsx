@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { useApp } from './AppContext';
 import { ServiceRecord, ServiceLine, ServicePartLine, ServiceType, Product, Customer } from '../types';
 import {
@@ -8,7 +8,9 @@ import {
 import {
   InvoicePrintFooter,
   InvoicePrintHeader,
+  printThermalReceipt,
   ThermalInvoice,
+  useThermalPaperWidth,
 } from '../lib/thermal-print';
 
 const SERVICE_PRICES: Record<ServiceType, number> = {
@@ -273,6 +275,8 @@ export const ReceiptModal: React.FC<{
   accounts?: { id: string; bankName: string }[];
   onClose: () => void;
 }> = ({ record, accounts = [], onClose }) => {
+  const [thermalPaperWidth, setThermalPaperWidth] = useThermalPaperWidth();
+  const thermalReceiptRef = useRef<HTMLElement>(null);
   const lines: ServiceLine[] = record.serviceLines ?? [{ serviceType: record.serviceType, price: record.price }];
   const hasOilChange = lines.some(l => l.serviceType === 'Oil Change');
   const paymentAccount = accounts.find(account => account.id === record.bankAccountId);
@@ -284,13 +288,16 @@ export const ReceiptModal: React.FC<{
       id: `service-${index}`,
       name: SERVICE_LABELS[line.serviceType as ServiceType] ?? line.serviceType,
       qty: 1,
+      rate: Number(line.price),
       amount: Number(line.price),
     })),
     ...(record.parts || []).map(part => ({
       id: `part-${part.productId}`,
       name: part.name,
       qty: part.qty,
+      rate: part.sellingPrice,
       amount: part.qty * part.sellingPrice,
+      partNumber: part.partNumber,
     })),
   ];
 
@@ -303,13 +310,17 @@ export const ReceiptModal: React.FC<{
         <InvoicePrintHeader
           format="Thermal"
           onFormatChange={() => undefined}
+          paperWidth={thermalPaperWidth}
+          onPaperWidthChange={setThermalPaperWidth}
           invoiceNumber={record.invoiceNumber}
           showFormatToggle={false}
           onClose={onClose}
         />
 
-        <div className="overflow-y-auto flex-1 print-area bg-white thermal-print-container thermal-paper-80x210">
+        <div className="overflow-y-auto flex-1 bg-white flex justify-center overflow-x-auto">
           <ThermalInvoice
+            receiptRef={thermalReceiptRef}
+            paperWidth={thermalPaperWidth}
             invoiceNumber={record.invoiceNumber}
             date={record.date}
             customerName={record.customerName}
@@ -325,7 +336,10 @@ export const ReceiptModal: React.FC<{
             reminder={hasOilChange ? 'Oil change reminder scheduled' : undefined}
           />
         </div>
-        <InvoicePrintFooter onPrint={() => window.print()} onClose={onClose} />
+        <InvoicePrintFooter
+          onPrint={() => { void printThermalReceipt(thermalReceiptRef.current, thermalPaperWidth); }}
+          onClose={onClose}
+        />
       </div>
     </div>
   );
