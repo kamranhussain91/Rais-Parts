@@ -123,10 +123,12 @@ export const InventoryView: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pName || !pPartNumber || !pBarcode) { alert('Name, Part Number and Barcode are required.'); return; }
+    const productName = pName.trim();
+    const productBarcode = pBarcode.trim();
+    if (!productName || !productBarcode) { alert('Product Name and Barcode are required.'); return; }
     const prod: Product = {
       id: editingProduct ? editingProduct.id : '',
-      name: pName, partNumber: pPartNumber, barcode: pBarcode,
+      name: productName, partNumber: pPartNumber.trim(), barcode: productBarcode,
       category: pCategory, compatibility: pCompatibility,
       purchasePrice: Number(pPurchasePrice), sellingPrice: Number(pSellingPrice),
       stock: Number(pStock), minStock: Number(pMinStock), supplierName: pSupplierName, location: pLocation,
@@ -577,6 +579,10 @@ export const InventoryView: React.FC = () => {
                 <div>
                   <label className={labelCls}>Barcode (EAN)</label>
                   <input type="text" required placeholder="EAN-13 digits" className={`${inputCls} font-mono`} value={pBarcode} onChange={e => setPBarcode(e.target.value)} />
+                </div>
+                <div>
+                  <label className={labelCls}>Part Number (Optional)</label>
+                  <input type="text" placeholder="e.g. 98056-10100" className={inputCls} value={pPartNumber} onChange={e => setPPartNumber(e.target.value)} />
                 </div>
                 <div>
                   <label className={labelCls}>Category</label>
